@@ -4,10 +4,10 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Stockling</title>
+    <title>스톡클링!</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 파비콘 추가 -->
-    <link rel="icon" type="image/png" href="/static/img/favicon2.png">
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome CDN -->
@@ -28,12 +28,12 @@
                 <nav>
                     <ul class="flex space-x-2">
                         <li>
-                            <a href="/recommendations.html" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                            <a href="/picks" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
                                 추천종목
                             </a>
                         </li>
                         <li>
-                            <a href="/profit.html" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                            <a href="/profit" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
                                 수익확인
                             </a>
                         </li>
@@ -41,7 +41,7 @@
                 </nav>
             </div>
             <div>
-                <a href="/login.html" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                <a href="/login" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
                     로그인
                 </a>
             </div>
@@ -61,12 +61,12 @@
                     누구나 쉽게 경험할 수 있도록.<br>
                     지금, 스톡클링과 함께 하세요.
                 </p>
-                <a href="/profit.html">
+                <a href="/profit">
                     <button class="bg-blue-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-blue-700 transition">
                         수익 확인
                     </button>
                 </a>
-                <a href="/recommendations.html">
+                <a href="/picks">
                     <button class="bg-indigo-400 text-white px-6 py-2 rounded font-semibold shadow hover:bg-indigo-500 transition">
                         오늘의 추천종목
                     </button>
@@ -167,3 +167,8 @@
 </body>
 
 </html>
+
+<!--python -m venv venv
+.\\venv\\Scripts\\Activate
+uvicorn api.main:app --reload
+-->
