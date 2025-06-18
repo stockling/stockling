@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>오늘의 추천종목 | Stockling</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+</head>
+<body style="font-family: 'Pretendard', 'sans-serif';" class="bg-[#eaf3fb]">
+    <!-- 헤더 -->
+    <header class="w-full bg-white py-3 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center space-x-10">
+                <a href="/" class="flex items-center">
+                    <img src="/static/img/logo.png" alt="Stockling 로고" class="h-12">
+                </a>
+                <nav>
+                    <ul class="flex space-x-2">
+                        <li>
+                            <a href="/picks" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                                추천종목
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/profit" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                                수익확인
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <div>
+                <a href="/login" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                    로그인
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 추천종목 섹션 -->
+    <section class="py-16">
+        <div class="max-w-5xl mx-auto px-4">
+            <h1 class="text-3xl font-bold mb-8">
+                오늘의 추천종목
+            </h1>
+            <div class="bg-white rounded-lg shadow-md p-8 min-h-[600px] flex items-center justify-center">
+                <div class="text-center text-gray-500 text-lg">
+                    추천 종목 데이터가 여기에 표시됩니다.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="text-xs text-gray-500 text-center px-8 py-4 bg-white border-t">
+        © 2025 Stockfit. All rights reserved.
+    </footer>
+</body>
+</html> 
