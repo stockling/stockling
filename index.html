@@ -1,0 +1,169 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Stockling</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 파비콘 추가 -->
+    <link rel="icon" type="image/png" href="/static/img/favicon.png">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- Pretendard 폰트 CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+</head>
+
+<body style="font-family: 'Pretendard', 'sans-serif';" class="bg-[#eaf3fb]">
+
+    <!-- 헤더 -->
+    <header class="w-full bg-white py-3 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center space-x-10">
+                <a href="/" class="flex items-center">
+                    <img src="/static/img/logo.png" alt="Stockling 로고" class="h-12">
+                </a>
+                <nav>
+                    <ul class="flex space-x-2">
+                        <li>
+                            <a href="/recommendations.html" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                                추천종목
+                            </a>
+                        </li>
+                        <li>
+                            <a href="/profit.html" class="px-5 py-2 rounded-full text-gray-700 hover:text-blue-600 transition-all duration-200 font-semibold text-lg">
+                                수익확인
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <div>
+                <a href="/login.html" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                    로그인
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero 섹션 -->
+    <section class="bg-[#eaf3fb] py-16">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="w-full md:w-1/2">
+                <h1 class="text-3xl md:text-4xl font-bold mb-4">
+                    청량한 수익의 시작,<br>
+                    자동매매 플랫폼 <span class="text-blue-600">스톡클링</span>
+                </h1>
+                <p class="mb-6 text-gray-700">
+                    인공지능 기반의 스마트한 투자,<br>
+                    누구나 쉽게 경험할 수 있도록.<br>
+                    지금, 스톡클링과 함께 하세요.
+                </p>
+                <a href="/profit.html">
+                    <button class="bg-blue-600 text-white px-6 py-2 rounded font-semibold shadow hover:bg-blue-700 transition">
+                        수익 확인
+                    </button>
+                </a>
+                <a href="/recommendations.html">
+                    <button class="bg-indigo-400 text-white px-6 py-2 rounded font-semibold shadow hover:bg-indigo-500 transition">
+                        오늘의 추천종목
+                    </button>
+                </a>
+                <a href="mailto:ejto100@gmail.com">
+                    <button class="bg-teal-500 text-white px-6 py-2 rounded font-semibold shadow hover:bg-teal-600 transition">
+                        문의하기
+                    </button>
+                </a>
+            </div>
+            <div class="w-full md:w-1/2 flex justify-end mt-8 md:mt-0">
+                <img src="/static/img/img01.png" alt="그래프 이미지" class="w-80 max-w-full">
+            </div>
+        </div>
+    </section>
+
+    <!-- 가치 섹션 -->
+    <section class="bg-white py-16">
+        <div class="container max-w-5xl mx-auto px-4">
+            <span class="inline-block bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-xs mb-2">
+                Stockling's Feature
+            </span>
+            <h2 class="text-3xl font-bold mb-8"><span class="text-blue-600">스톡클링</span>이 드리는 가치</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-[#f6fafd] p-6 rounded-lg shadow flex flex-col items-center">
+                    <i class="fas fa-search text-blue-500 text-3xl mb-4"></i>
+                    <h3 class="font-bold mb-2">급등주 발굴 리서치</h3>
+                    <p class="text-sm text-gray-600 text-center">AI 기반 예측 시스템으로<br>수익성 높은 종목 선별</p>
+                </div>
+                <div class="bg-[#f6fafd] p-6 rounded-lg shadow flex flex-col items-center">
+                    <i class="fas fa-robot text-blue-500 text-3xl mb-4"></i>
+                    <h3 class="font-bold mb-2">AI 자동 매매 시스템</h3>
+                    <p class="text-sm text-gray-600 text-center">백테스트 기반 전략으로<br>타깃 종목 자동 거래</p>
+                </div>
+                <div class="bg-[#f6fafd] p-6 rounded-lg shadow flex flex-col items-center">
+                    <i class="fas fa-chart-line text-blue-500 text-3xl mb-4"></i>
+                    <h3 class="font-bold mb-2">전략 알고리즘 분석</h3>
+                    <p class="text-sm text-gray-600 text-center">조건 기반 전략을<br>시뮬레이션하고 실행</p>
+                </div>
+                <div class="bg-[#f6fafd] p-6 rounded-lg shadow flex flex-col items-center">
+                    <i class="fas fa-shield-alt text-blue-500 text-3xl mb-4"></i>
+                    <h3 class="font-bold mb-2">리스크 자동 관리</h3>
+                    <p class="text-sm text-gray-600 text-center">실행 손절/익절 기준으로<br>손실 최소화 및 안정성 확보</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 중간 타이틀 -->
+    <section class="text-center py-12 bg-[#f6fafd]">
+        <div class="text-gray-500 text-sl mb-2">혼자서도 충분한 투자</div>
+        <h2 class="text-2xl md:text-3xl font-bold">
+            당신을 위한 자동매매 시스템,<br>
+            <span class="text-blue-600">스톡클링</span>
+        </h2>
+    </section>
+
+    <!-- 매매 전략/정보 섹션 -->
+    <section class="bg-[#eaf3fb] py-16">
+        <div class="container max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center px-4">
+            <div>
+                <span class="text-blue-600 font-semibold text-sm">Innovation</span>
+                <h3 class="text-2xl font-bold mt-2 mb-4">투자에 기준이 있다면, 그건 스톡클링입니다</h3>
+                <p class="text-gray-700 mb-2">
+                    정제된 정보와 정교한 전략, 자동화 시스템이 하나로!<br>
+                    실시간 분석과 신뢰할 수 있는 데이터를 통해<br>
+                    안정적이고 투명한 매매 경험을 제공합니다.<br>
+                    지금, 스톡클링에서 새로운 투자 기준을 경험하세요.
+                </p>
+            </div>
+            <img src="/static/img/img02.png" alt="트레이딩 전략" class="rounded-lg shadow">
+        </div>
+    </section>
+
+    <!-- 포트폴리오/정보 섹션 -->
+    <section class="bg-white py-16">
+        <div class="max-w-5xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
+            <div class="flex justify-start">
+                <img src="/static/img/img03.png" alt="포트폴리오 정보" class="rounded-lg shadow w-full max-w-[400px]">
+            </div>
+            <div class="flex flex-col justify-center">
+                <span class="text-blue-600 font-semibold text-sm mb-1">User-Centric Approach</span>
+                <h3 class="text-2xl font-bold mb-4">필요한 모든 정보, 한 곳에</h3>
+                <p class="text-gray-700 mb-2">
+                    대시보드에서<br>
+                    실시간 투자 현황, 종목 분석, 변동 상황을<br>
+                    모두 확인할 수 있습니다.<br>
+                    알림도 웹 / 모바일 / 이메일로 즉시 제공!
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="text-xs text-gray-500 text-center px-8 py-4 bg-white border-t">
+        © 2025 Stockling. All rights reserved.
+    </footer>
+</body>
+
+</html>
