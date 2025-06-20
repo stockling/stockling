@@ -1,12 +1,15 @@
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-# .env 파일에서 환경 변수 로드
-load_dotenv()
+# .env 파일의 절대 경로를 명시적으로 지정하여 로드
+# 이 파일(database.py)의 위치를 기준으로 상위 폴더(프로젝트 루트)의 .env 파일을 찾습니다.
+env_path = Path(__file__).resolve().parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 # 환경 변수에서 데이터베이스 URL 가져오기
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
@@ -20,6 +23,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# 한국 시간대(KST) 정의
+KST = timezone(timedelta(hours=9))
+
 # 사용자 모델
 class User(Base):
     __tablename__ = "users"
@@ -27,8 +33,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(KST))
+    updated_at = Column(DateTime, default=lambda: datetime.now(KST), onupdate=lambda: datetime.now(KST))
 
 # 데이터베이스 테이블 생성
 def create_tables():
