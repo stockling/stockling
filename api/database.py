@@ -1,9 +1,19 @@
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone
 
-SQLALCHEMY_DATABASE_URL = "mysql+pymysql://root:123456@localhost:3307/stockling_db"
+# .env 파일에서 환경 변수 로드
+load_dotenv()
+
+# 환경 변수에서 데이터베이스 URL 가져오기
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+# 데이터베이스 URL이 설정되지 않은 경우 오류 발생
+if not SQLALCHEMY_DATABASE_URL:
+    raise ValueError("DATABASE_URL 환경 변수가 설정되지 않았습니다. .env 파일을 확인하세요.")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
