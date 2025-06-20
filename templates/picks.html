@@ -33,9 +33,18 @@
                 </nav>
             </div>
             <div>
+                {% if user %}
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700 font-medium">{{ user.email }}님</span>
+                    <button id="logoutBtn" class="bg-gray-500 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-600 transition-all duration-200 shadow-sm">
+                        로그아웃
+                    </button>
+                </div>
+                {% else %}
                 <a href="/login" class="bg-blue-600 text-white px-5 py-2 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
                     로그인
                 </a>
+                {% endif %}
             </div>
         </div>
     </header>
@@ -56,7 +65,101 @@
 
     <!-- 푸터 -->
     <footer class="text-xs text-gray-500 text-center px-8 py-4 bg-white border-t">
-        © 2025 Stockfit. All rights reserved.
+        <span>© 2025 Stockling. All rights reserved.</span>
+        {% if user %}
+        <span class="mx-2">|</span>
+        <button id="withdrawBtn" class="hover:text-red-500 hover:underline">회원탈퇴</button>
+        {% endif %}
     </footer>
+
+    <!-- 회원탈퇴 모달 -->
+    <div id="withdrawModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full">
+            <h2 class="text-xl font-bold mb-4">회원탈퇴 확인</h2>
+            <p class="mb-6 text-gray-700">
+                정말 탈퇴하시겠습니까?<br>
+                저장된 모든 데이터는 복구가 불가능합니다.
+            </p>
+            <div class="flex justify-end space-x-4">
+                <button id="cancelWithdrawBtn" class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">
+                    취소
+                </button>
+                <button id="confirmWithdrawBtn" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700">
+                    탈퇴
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 로그아웃 버튼 이벤트 처리
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/logout', {
+                        method: 'POST',
+                    });
+
+                    if (response.ok) {
+                        alert('로그아웃 되었습니다.');
+                        window.location.href = '/';
+                    } else {
+                        alert('로그아웃에 실패했습니다.');
+                    }
+                } catch (error) {
+                    alert('오류가 발생했습니다.');
+                }
+            });
+        }
+
+        // 회원탈퇴 관련 스크립트
+        const withdrawBtn = document.getElementById('withdrawBtn');
+        const withdrawModal = document.getElementById('withdrawModal');
+        const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
+        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
+
+        if (withdrawBtn) {
+            withdrawBtn.addEventListener('click', () => {
+                withdrawModal.classList.remove('hidden');
+            });
+        }
+        
+        if (cancelWithdrawBtn) {
+            cancelWithdrawBtn.addEventListener('click', () => {
+                withdrawModal.classList.add('hidden');
+            });
+        }
+
+        if (confirmWithdrawBtn) {
+            confirmWithdrawBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/api/user', {
+                        method: 'DELETE',
+                    });
+
+                    if (response.status === 204) {
+                        withdrawModal.classList.add('hidden');
+                        alert('회원탈퇴가 완료되었습니다.');
+                        window.location.href = '/';
+                    } else {
+                        const errorData = await response.json();
+                        alert(`회원탈퇴에 실패했습니다: ${errorData.detail}`);
+                    }
+                } catch (error) {
+                    alert('오류가 발생했습니다.');
+                }
+            });
+        }
+        
+        // 모달 외부 클릭 시 닫기
+        if (withdrawModal) {
+            withdrawModal.addEventListener('click', (e) => {
+                if (e.target === withdrawModal) {
+                    withdrawModal.classList.add('hidden');
+                }
+            });
+        }
+    </script>
 </body>
 </html> 
