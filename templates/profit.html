@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 </head>
-<body class="bg-[#eaf3fb]" style="font-family: 'Pretendard', 'sans-serif';">
+<body style="font-family: 'Pretendard', 'sans-serif';" class="bg-[#eaf3fb] min-h-screen flex flex-col">
     <!-- 헤더 -->
     <header class="w-full bg-white py-3 shadow-sm">
         <div class="max-w-5xl mx-auto px-4 flex items-center justify-between">
@@ -50,19 +50,30 @@
     </header>
 
     <!-- 수익확인 섹션 -->
-    <section class="py-16">
+    <section class="py-16 flex-grow">
         <div class="max-w-5xl mx-auto px-4">
             <h1 class="text-3xl font-bold mb-8">
                 내 수익현황
             </h1>
             
-            <!-- 수익 데이터 컨테이너 -->
-            <div class="bg-white rounded-lg shadow-md p-8 min-h-[600px] flex items-center justify-center">
-                <!-- 추후 수익 데이터가 이 곳에 표시될 예정입니다 -->
+            {% if user %}
+            <!-- 로그인 시 보여질 내용 (단순화) -->
+            <div id="profitData" class="bg-white rounded-lg shadow-md p-8 min-h-[600px] flex items-center justify-center">
                 <div class="text-center text-gray-500 text-lg">
-                    수익 데이터가 여기에 표시됩니다.
+                    수익 정보가 여기에 표시됩니다. (기능 복구 예정)
                 </div>
             </div>
+            {% else %}
+            <!-- 로그인 필요 메시지 (picks.html과 동일한 구조로 테스트) -->
+            <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                <div class="text-gray-500 text-lg mb-4">
+                    수익 정보를 확인하려면 로그인이 필요합니다.
+                </div>
+                <a href="/login" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                    로그인하기
+                </a>
+            </div>
+            {% endif %}
         </div>
     </section>
 
@@ -95,74 +106,63 @@
     </div>
 
     <script>
-        // 로그아웃 버튼 이벤트 처리
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/logout', {
-                        method: 'POST',
-                    });
+        // 스크립트 단순화 (기능 복구 예정)
+        document.addEventListener('DOMContentLoaded', () => {
+            // 로그아웃 버튼 이벤트 처리
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    // POST 요청으로 변경 권장
+                    window.location.href = '/logout';
+                });
+            }
 
-                    if (response.ok) {
-                        alert('로그아웃 되었습니다.');
-                        window.location.href = '/';
-                    } else {
-                        alert('로그아웃에 실패했습니다.');
-                    }
-                } catch (error) {
-                    alert('오류가 발생했습니다.');
-                }
-            });
-        }
+            // 회원탈퇴 관련 스크립트 (기존과 동일)
+            const withdrawBtn = document.getElementById('withdrawBtn');
+            const withdrawModal = document.getElementById('withdrawModal');
+            const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
+            const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
 
-        // 회원탈퇴 관련 스크립트
-        const withdrawBtn = document.getElementById('withdrawBtn');
-        const withdrawModal = document.getElementById('withdrawModal');
-        const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
-        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
-
-        if (withdrawBtn) {
-            withdrawBtn.addEventListener('click', () => {
-                withdrawModal.classList.remove('hidden');
-            });
-        }
-        
-        if (cancelWithdrawBtn) {
-            cancelWithdrawBtn.addEventListener('click', () => {
-                withdrawModal.classList.add('hidden');
-            });
-        }
-
-        if (confirmWithdrawBtn) {
-            confirmWithdrawBtn.addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/user', {
-                        method: 'DELETE',
-                    });
-
-                    if (response.status === 204) {
-                        withdrawModal.classList.add('hidden');
-                        alert('회원탈퇴가 완료되었습니다.');
-                        window.location.href = '/';
-                    } else {
-                        const errorData = await response.json();
-                        alert(`회원탈퇴에 실패했습니다: ${errorData.detail}`);
-                    }
-                } catch (error) {
-                    alert('오류가 발생했습니다.');
-                }
-            });
-        }
-        
-        // 모달 외부 클릭 시 닫기
-        if (withdrawModal) {
-            withdrawModal.addEventListener('click', (e) => {
-                if (e.target === withdrawModal) {
+            if (withdrawBtn) {
+                withdrawBtn.addEventListener('click', () => {
+                    withdrawModal.classList.remove('hidden');
+                });
+            }
+            
+            if (cancelWithdrawBtn) {
+                cancelWithdrawBtn.addEventListener('click', () => {
                     withdrawModal.classList.add('hidden');
-                }
-            });
-        }
+                });
+            }
+
+            if (confirmWithdrawBtn) {
+                confirmWithdrawBtn.addEventListener('click', async () => {
+                    try {
+                        const response = await fetch('/api/user', {
+                            method: 'DELETE',
+                        });
+
+                        if (response.status === 204) {
+                            alert('회원탈퇴가 완료되었습니다.');
+                            window.location.href = '/';
+                        } else {
+                            const errorData = await response.json();
+                            alert(`회원탈퇴에 실패했습니다: ${errorData.detail}`);
+                        }
+                    } catch (error) {
+                        alert('오류가 발생했습니다.');
+                    }
+                });
+            }
+
+            if (withdrawModal) {
+                withdrawModal.addEventListener('click', (e) => {
+                    if (e.target === withdrawModal) {
+                        withdrawModal.classList.add('hidden');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html> 
