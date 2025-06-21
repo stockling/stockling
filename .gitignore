@@ -9,6 +9,9 @@ __pycache__/
 .env
 .env.*
 
+# API 토큰 파일
+token.dat
+
 # IDE/에디터 설정
 .vscode/
 .idea/

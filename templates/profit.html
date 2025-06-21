@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 </head>
-<body class="bg-[#eaf3fb]" style="font-family: 'Pretendard', 'sans-serif';">
+<body style="font-family: 'Pretendard', 'sans-serif';" class="bg-[#eaf3fb] min-h-screen flex flex-col">
     <!-- 헤더 -->
     <header class="w-full bg-white py-3 shadow-sm">
         <div class="max-w-5xl mx-auto px-4 flex items-center justify-between">
@@ -50,19 +50,47 @@
     </header>
 
     <!-- 수익확인 섹션 -->
-    <section class="py-16">
+    <section class="py-16 flex-grow">
         <div class="max-w-5xl mx-auto px-4">
             <h1 class="text-3xl font-bold mb-8">
                 내 수익현황
             </h1>
             
-            <!-- 수익 데이터 컨테이너 -->
-            <div class="bg-white rounded-lg shadow-md p-8 min-h-[600px] flex items-center justify-center">
-                <!-- 추후 수익 데이터가 이 곳에 표시될 예정입니다 -->
-                <div class="text-center text-gray-500 text-lg">
-                    수익 데이터가 여기에 표시됩니다.
+            {% if user and user.is_admin %}
+            <!-- 관리자만 보여질 내용 -->
+            <div id="profitData" class="bg-white rounded-lg shadow-md p-8 min-h-[600px]" data-is-admin="true">
+                <div id="loadingMessage" class="text-center text-gray-500 text-lg">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                    수익 정보를 불러오는 중...
+                </div>
+                <div id="profitContent" class="hidden">
+                    <!-- 수익 정보가 여기에 동적으로 표시됩니다 -->
+                </div>
+                <div id="errorMessage" class="hidden text-center text-red-500 text-lg">
+                    <!-- 오류 메시지가 여기에 표시됩니다 -->
                 </div>
             </div>
+            {% elif user %}
+            <!-- 일반 사용자 접근 제한 메시지 -->
+            <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                <div class="text-gray-500 text-lg mb-4">
+                    관리자만 수익 정보를 확인할 수 있습니다.
+                </div>
+                <div class="text-sm text-gray-400">
+                    현재 계정: {{ user.email }}
+                </div>
+            </div>
+            {% else %}
+            <!-- 로그인 필요 메시지 -->
+            <div class="bg-white rounded-lg shadow-md p-8 text-center">
+                <div class="text-gray-500 text-lg mb-4">
+                    수익 정보를 확인하려면 로그인이 필요합니다.
+                </div>
+                <a href="/login" class="inline-block bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                    로그인하기
+                </a>
+            </div>
+            {% endif %}
         </div>
     </section>
 
@@ -95,74 +123,214 @@
     </div>
 
     <script>
-        // 로그아웃 버튼 이벤트 처리
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
+        document.addEventListener('DOMContentLoaded', () => {
+            // 수익 데이터 로드 함수
+            async function loadProfitData() {
+                const loadingMessage = document.getElementById('loadingMessage');
+                const profitContent = document.getElementById('profitContent');
+                const errorMessage = document.getElementById('errorMessage');
+                
                 try {
-                    const response = await fetch('/api/logout', {
-                        method: 'POST',
-                    });
-
+                    const response = await fetch('/api/profit');
+                    
                     if (response.ok) {
-                        alert('로그아웃 되었습니다.');
-                        window.location.href = '/';
-                    } else {
-                        alert('로그아웃에 실패했습니다.');
-                    }
-                } catch (error) {
-                    alert('오류가 발생했습니다.');
-                }
-            });
-        }
-
-        // 회원탈퇴 관련 스크립트
-        const withdrawBtn = document.getElementById('withdrawBtn');
-        const withdrawModal = document.getElementById('withdrawModal');
-        const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
-        const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
-
-        if (withdrawBtn) {
-            withdrawBtn.addEventListener('click', () => {
-                withdrawModal.classList.remove('hidden');
-            });
-        }
-        
-        if (cancelWithdrawBtn) {
-            cancelWithdrawBtn.addEventListener('click', () => {
-                withdrawModal.classList.add('hidden');
-            });
-        }
-
-        if (confirmWithdrawBtn) {
-            confirmWithdrawBtn.addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/user', {
-                        method: 'DELETE',
-                    });
-
-                    if (response.status === 204) {
-                        withdrawModal.classList.add('hidden');
-                        alert('회원탈퇴가 완료되었습니다.');
-                        window.location.href = '/';
+                        const data = await response.json();
+                        displayProfitData(data);
+                        
+                        // 로딩 메시지 숨기고 콘텐츠 표시
+                        loadingMessage.classList.add('hidden');
+                        profitContent.classList.remove('hidden');
                     } else {
                         const errorData = await response.json();
-                        alert(`회원탈퇴에 실패했습니다: ${errorData.detail}`);
+                        throw new Error(errorData.detail || '수익 정보를 불러오는데 실패했습니다.');
                     }
                 } catch (error) {
-                    alert('오류가 발생했습니다.');
+                    console.error('수익 데이터 로드 오류:', error);
+                    
+                    // 로딩 메시지 숨기고 오류 메시지 표시
+                    loadingMessage.classList.add('hidden');
+                    errorMessage.classList.remove('hidden');
+                    errorMessage.textContent = error.message;
                 }
-            });
-        }
-        
-        // 모달 외부 클릭 시 닫기
-        if (withdrawModal) {
-            withdrawModal.addEventListener('click', (e) => {
-                if (e.target === withdrawModal) {
+            }
+            
+            // 수익 데이터 표시 함수
+            function displayProfitData(data) {
+                const profitContent = document.getElementById('profitContent');
+                
+                // 계좌 정보
+                const accountInfo = data.account_info;
+                const isMock = accountInfo.mock ? '모의투자' : '실전투자';
+                
+                // 총 수익률 계산
+                const totalProfitRate = data.total_purchase_amount > 0 
+                    ? ((data.total_profit / data.total_purchase_amount) * 100).toFixed(2)
+                    : '0.00';
+                
+                // 수익률 색상 결정
+                const profitColor = data.total_profit >= 0 ? 'text-green-600' : 'text-red-600';
+                const profitRateColor = parseFloat(totalProfitRate) >= 0 ? 'text-green-600' : 'text-red-600';
+                
+                profitContent.innerHTML = `
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold mb-4">계좌 정보</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-600">계좌번호</div>
+                                <div class="font-semibold">${accountInfo.acc_no}</div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <div class="text-sm text-gray-600">투자 모드</div>
+                                <div class="font-semibold">${isMock}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-8">
+                        <h2 class="text-2xl font-bold mb-4">수익 현황</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="bg-blue-50 p-6 rounded-lg text-center">
+                                <div class="text-sm text-blue-600 mb-2">총 평가금액</div>
+                                <div class="text-2xl font-bold text-blue-700">
+                                    ${data.total_balance.toLocaleString()}원
+                                </div>
+                            </div>
+                            <div class="bg-green-50 p-6 rounded-lg text-center">
+                                <div class="text-sm text-green-600 mb-2">총 수익금</div>
+                                <div class="text-2xl font-bold ${profitColor}">
+                                    ${data.total_profit >= 0 ? '+' : ''}${data.total_profit.toLocaleString()}원
+                                </div>
+                            </div>
+                            <div class="bg-purple-50 p-6 rounded-lg text-center">
+                                <div class="text-sm text-purple-600 mb-2">수익률</div>
+                                <div class="text-2xl font-bold ${profitRateColor}">
+                                    ${data.total_profit >= 0 ? '+' : ''}${totalProfitRate}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-2xl font-bold mb-4">보유 종목</h2>
+                        ${data.holdings.length > 0 ? `
+                            <div class="overflow-x-auto">
+                                <table class="w-full border-collapse">
+                                    <thead>
+                                        <tr class="bg-gray-50">
+                                            <th class="text-left p-3 border-b">종목명</th>
+                                            <th class="text-right p-3 border-b">수량</th>
+                                            <th class="text-right p-3 border-b">매수가</th>
+                                            <th class="text-right p-3 border-b">현재가</th>
+                                            <th class="text-right p-3 border-b">수익금</th>
+                                            <th class="text-right p-3 border-b">수익률</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.holdings.map(holding => {
+                                            const holdingProfitColor = holding.profit >= 0 ? 'text-green-600' : 'text-red-600';
+                                            const holdingRateColor = holding.profit_rate >= 0 ? 'text-green-600' : 'text-red-600';
+                                            return `
+                                                <tr class="hover:bg-gray-50">
+                                                    <td class="p-3 border-b">
+                                                        <div class="font-semibold">${holding.name}</div>
+                                                        <div class="text-sm text-gray-500">${holding.symbol}</div>
+                                                    </td>
+                                                    <td class="text-right p-3 border-b">${holding.quantity.toLocaleString()}</td>
+                                                    <td class="text-right p-3 border-b">${holding.purchase_price.toLocaleString()}원</td>
+                                                    <td class="text-right p-3 border-b">${holding.current_price.toLocaleString()}원</td>
+                                                    <td class="text-right p-3 border-b ${holdingProfitColor}">
+                                                        ${holding.profit >= 0 ? '+' : ''}${holding.profit.toLocaleString()}원
+                                                    </td>
+                                                    <td class="text-right p-3 border-b ${holdingRateColor}">
+                                                        ${holding.profit_rate >= 0 ? '+' : ''}${holding.profit_rate}%
+                                                    </td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `
+                            <div class="text-center text-gray-500 py-8">
+                                보유 종목이 없습니다.
+                            </div>
+                        `}
+                    </div>
+                `;
+            }
+            
+            // 관리자인 경우에만 수익 데이터 로드
+            const profitData = document.getElementById('profitData');
+            if (profitData && profitData.dataset.isAdmin === 'true') {
+                loadProfitData();
+            }
+
+            // 로그아웃 버튼 이벤트 처리
+            const logoutBtn = document.getElementById('logoutBtn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', async () => {
+                    try {
+                        const response = await fetch('/api/logout', {
+                            method: 'POST',
+                        });
+
+                        if (response.ok) {
+                            window.location.href = '/';
+                        } else {
+                            alert('로그아웃에 실패했습니다.');
+                        }
+                    } catch (error) {
+                        alert('오류가 발생했습니다.');
+                    }
+                });
+            }
+
+            // 회원탈퇴 관련 스크립트 (기존과 동일)
+            const withdrawBtn = document.getElementById('withdrawBtn');
+            const withdrawModal = document.getElementById('withdrawModal');
+            const cancelWithdrawBtn = document.getElementById('cancelWithdrawBtn');
+            const confirmWithdrawBtn = document.getElementById('confirmWithdrawBtn');
+
+            if (withdrawBtn) {
+                withdrawBtn.addEventListener('click', () => {
+                    withdrawModal.classList.remove('hidden');
+                });
+            }
+            
+            if (cancelWithdrawBtn) {
+                cancelWithdrawBtn.addEventListener('click', () => {
                     withdrawModal.classList.add('hidden');
-                }
-            });
-        }
+                });
+            }
+
+            if (confirmWithdrawBtn) {
+                confirmWithdrawBtn.addEventListener('click', async () => {
+                    try {
+                        const response = await fetch('/api/user', {
+                            method: 'DELETE',
+                        });
+
+                        if (response.status === 204) {
+                            alert('회원탈퇴가 완료되었습니다.');
+                            window.location.href = '/';
+                        } else {
+                            const errorData = await response.json();
+                            alert(`회원탈퇴에 실패했습니다: ${errorData.detail}`);
+                        }
+                    } catch (error) {
+                        alert('오류가 발생했습니다.');
+                    }
+                });
+            }
+
+            if (withdrawModal) {
+                withdrawModal.addEventListener('click', (e) => {
+                    if (e.target === withdrawModal) {
+                        withdrawModal.classList.add('hidden');
+                    }
+                });
+            }
+        });
     </script>
 </body>
 </html> 
