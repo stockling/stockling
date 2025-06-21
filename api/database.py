@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from pathlib import Path
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, timezone, timedelta
@@ -33,6 +33,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     password = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False)  # 관리자 여부 플래그
     created_at = Column(DateTime, default=lambda: datetime.now(KST))
     updated_at = Column(DateTime, default=lambda: datetime.now(KST), onupdate=lambda: datetime.now(KST))
 
@@ -47,3 +48,5 @@ def get_db():
         yield db
     finally:
         db.close() 
+
+# docker exec -it stockling-db  bash    
