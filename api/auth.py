@@ -1,7 +1,8 @@
 import re
 from sqlalchemy.orm import Session
-from .database import User
-from .security import verify_password
+from fastapi import Depends, HTTPException, status, Request
+from .database import User, get_db
+from .security import verify_password, get_password_hash, decode_access_token, create_access_token
 
 # 비밀번호 해싱 설정
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -47,4 +48,17 @@ def authenticate_user(db: Session, email: str, password: str):
         return None
     if not verify_password(password, user.password):
         return None
+    return user
+
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    """현재 로그인된 사용자 정보를 가져오는 의존성"""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    
+    email = decode_access_token(token)
+    if not email:
+        return None
+    
+    user = db.query(User).filter(User.email == email).first()
     return user 
