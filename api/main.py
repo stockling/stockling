@@ -1,217 +1,193 @@
-from fastapi import FastAPI, Request, Depends, HTTPException, status, Response
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+"""
+Stockling - 한국투자증권 오픈API v2 기반 주식 자동매매 시스템
+"""
+
+from fastapi import FastAPI, HTTPException, Depends, status, Request, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import HTTPBearer
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
-import uvicorn
-from contextlib import asynccontextmanager
+from typing import Optional
 import os
+import traceback
+from datetime import datetime, timedelta
 
-from .database import get_db, create_tables, User
-from .auth import (
-    validate_email, 
-    validate_password, 
-    check_email_exists, 
-    authenticate_user
-)
-from .schemas import UserCreate, UserLogin, EmailCheck
-from .security import create_access_token, decode_access_token, get_password_hash
-from .korea_investment import get_korea_investment_client
+# 로컬 모듈 임포트
+from .database import get_db, engine, Base, User
+from .schemas import UserCreate, UserLogin
+from .auth import get_current_user, create_access_token, get_password_hash, verify_password
+from .korea_investment import get_korea_investment_client, get_paper_trading_client, get_real_trading_client
 
-def create_admin_user():
-    """서버 시작 시 관리자 계정을 확인하고 없으면 생성합니다."""
-    admin_email = os.getenv("ADMIN_EMAIL")
-    admin_password = os.getenv("ADMIN_PASSWORD")
+# 데이터베이스 테이블 생성
+Base.metadata.create_all(bind=engine)
 
-    if not admin_email or not admin_password:
-        print("경고: ADMIN_EMAIL 또는 ADMIN_PASSWORD 환경변수가 설정되지 않았습니다.")
-        return
+app = FastAPI(title="Stockling API v2", version="2.0.0")
 
-    db_session_gen = get_db()
-    db = next(db_session_gen)
-    try:
-        # 관리자 계정이 이미 있는지 확인
-        user = db.query(User).filter(User.email == admin_email).first()
-        if not user:
-            hashed_password = get_password_hash(admin_password)
-            admin_user = User(email=admin_email, password=hashed_password, is_admin=True)
-            db.add(admin_user)
-            db.commit()
-            print(f"관리자 계정 '{admin_email}'이(가) 생성되었습니다.")
-        else:
-            print(f"관리자 계정 '{admin_email}'이(가) 이미 존재합니다.")
-    finally:
-        next(db_session_gen, None)
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    애플리케이션의 시작과 종료 시 수행할 작업을 정의하는 lifespan 이벤트 핸들러입니다.
-    시작 시: 데이터베이스 테이블을 생성하고, 관리자 계정을 확인/생성합니다.
-    """
-    create_tables()
-    create_admin_user()
-    yield
-    # 애플리케이션 종료 시 필요한 정리 작업이 있다면 여기에 추가합니다.
-
-app = FastAPI(lifespan=lifespan)
-
-# 정적 파일 경로 설정
+# 정적 파일 및 템플릿 설정
 app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
 
-# Jinja2 템플릿 경로 설정
-templates = Jinja2Templates(directory="templates", auto_reload=True)
-
-# 현재 로그인된 사용자 정보를 가져오는 의존성
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("access_token")
-    if not token:
-        return None
-    
-    email = decode_access_token(token)
-    if not email:
-        return None
-    
-    user = db.query(User).filter(User.email == email).first()
-    return user
+# 보안 설정
+security = HTTPBearer(auto_error=False)
 
 @app.get("/", response_class=HTMLResponse)
-def read_index(request: Request, user: User | None = Depends(get_current_user)):
+async def read_root(request: Request, user: User | None = Depends(get_current_user)):
+    """메인 페이지"""
     return templates.TemplateResponse("index.html", {"request": request, "user": user})
 
 @app.get("/login", response_class=HTMLResponse)
-def read_login(request: Request, user: User | None = Depends(get_current_user)):
-    if user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    return templates.TemplateResponse("login.html", {"request": request, "user": None})
+async def login_page(request: Request):
+    """로그인 페이지"""
+    return templates.TemplateResponse("login.html", {"request": request})
 
 @app.get("/signup", response_class=HTMLResponse)
-def read_signup(request: Request, user: User | None = Depends(get_current_user)):
-    if user:
-        return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    return templates.TemplateResponse("signup.html", {"request": request, "user": None})
+async def signup_page(request: Request):
+    """회원가입 페이지"""
+    return templates.TemplateResponse("signup.html", {"request": request})
 
 @app.get("/profit", response_class=HTMLResponse)
-def read_profit(request: Request, user: User | None = Depends(get_current_user)):
-    return templates.TemplateResponse("profit.html", {"request": request, "user": user})
+async def profit_page(request: Request, user: User | None = Depends(get_current_user)):
+    """수익 현황 페이지 (관리자 전용)"""
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자만 접근할 수 있습니다."
+        )
+    
+    return templates.TemplateResponse("profit.html", {
+        "request": request, 
+        "user": user,
+        "is_admin": user.is_admin
+    })
 
 @app.get("/picks", response_class=HTMLResponse)
-def read_recommendations(request: Request, user: User | None = Depends(get_current_user)):
+async def picks_page(request: Request, user: User | None = Depends(get_current_user)):
+    """추천 종목 페이지"""
     return templates.TemplateResponse("picks.html", {"request": request, "user": user})
 
 # API 엔드포인트들
-@app.post("/api/check-email")
-def check_email(email_data: EmailCheck, db: Session = Depends(get_db)):
-    """이메일 중복 확인"""
-    if not validate_email(email_data.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 이메일 형식입니다."
-        )
-    
-    exists = check_email_exists(db, email_data.email)
-    return {"exists": exists}
-
 @app.post("/api/signup")
-def signup(user_data: UserCreate, db: Session = Depends(get_db)):
-    """회원가입"""
-    # 이메일 형식 검증
-    if not validate_email(user_data.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="유효하지 않은 이메일 형식입니다."
-        )
-    
-    # 이메일 중복 확인
-    if check_email_exists(db, user_data.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="이미 사용 중인 이메일입니다."
-        )
-    
-    # 비밀번호 형식 검증
-    is_valid, message = validate_password(user_data.password)
-    if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message
-        )
-    
-    # 비밀번호 확인
-    if user_data.password != user_data.password_confirm:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="비밀번호가 일치하지 않습니다."
-        )
-    
-    # 사용자 생성
-    hashed_password = get_password_hash(user_data.password)
-    db_user = User(email=user_data.email, password=hashed_password)
-    
+async def signup(user_data: UserCreate, db: Session = Depends(get_db)):
+    """회원가입 API"""
     try:
-        db.add(db_user)
+        # 이메일 중복 확인
+        existing_user = db.query(User).filter(User.email == user_data.email).first()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 등록된 이메일입니다."
+            )
+        
+        # 비밀번호 확인
+        if user_data.password != user_data.password_confirm:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="비밀번호가 일치하지 않습니다."
+            )
+        
+        # 비밀번호 해싱
+        hashed_password = get_password_hash(user_data.password)
+        
+        # 사용자 생성
+        new_user = User(
+            email=user_data.email,
+            password=hashed_password,
+            is_admin=False  # 일반 사용자는 관리자가 아님
+        )
+        
+        db.add(new_user)
         db.commit()
-        db.refresh(db_user)
+        db.refresh(new_user)
+        
         return {"message": "회원가입이 완료되었습니다."}
+        
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
+        print(f"회원가입 오류: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="회원가입 중 오류가 발생했습니다."
         )
 
 @app.post("/api/login")
-def login(response: Response, user_data: UserLogin, db: Session = Depends(get_db)):
-    """로그인 후 토큰을 쿠키에 저장"""
-    user = authenticate_user(db, user_data.email, user_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="이메일 또는 비밀번호가 올바르지 않습니다."
+async def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db)):
+    """로그인 API"""
+    try:
+        # 사용자 확인
+        user = db.query(User).filter(User.email == user_data.email).first()
+        if not user or not verify_password(user_data.password, user.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="이메일 또는 비밀번호가 올바르지 않습니다."
+            )
+        
+        # JWT 토큰 생성
+        access_token = create_access_token(data={"sub": user.email})
+        
+        # 쿠키에 토큰 저장
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,  # 개발환경에서는 False, 프로덕션에서는 True
+            samesite="lax",
+            max_age=24 * 60 * 60  # 24시간
         )
-    
-    # 액세스 토큰 생성
-    access_token = create_access_token(data={"sub": user.email})
-    
-    # 토큰을 httponly 쿠키에 저장
-    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite='lax')
-    
-    return {"message": "로그인되었습니다."}
+        
+        return {
+            "message": "로그인이 완료되었습니다.",
+            "user": {
+                "email": user.email,
+                "is_admin": user.is_admin
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"로그인 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="로그인 중 오류가 발생했습니다."
+        )
 
 @app.post("/api/logout")
-def logout():
-    """로그아웃 API. 토큰 쿠키를 삭제합니다."""
-    response = JSONResponse(status_code=status.HTTP_200_OK, content={"message": "로그아웃 성공"})
-    response.delete_cookie(key="access_token")
-    return response
+async def logout(response: Response):
+    """로그아웃 API"""
+    response.delete_cookie("access_token")
+    return {"message": "로그아웃이 완료되었습니다."}
 
 @app.delete("/api/user")
-def delete_user(
-    db: Session = Depends(get_db),
-    user: User | None = Depends(get_current_user)
-):
-    """회원 탈퇴 API. 사용자 정보를 삭제하고 토큰 쿠키를 제거합니다."""
+async def delete_user(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """회원탈퇴 API"""
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="인증되지 않은 사용자입니다."
+            detail="로그인이 필요합니다."
         )
     
-    # 데이터베이스에서 사용자 삭제
-    db.delete(user)
-    db.commit()
-    
-    # 응답 생성 및 쿠키 삭제
-    response = Response(status_code=status.HTTP_204_NO_CONTENT)
-    response.delete_cookie(key="access_token")
-    return response
+    try:
+        db.delete(user)
+        db.commit()
+        return {"message": "회원탈퇴가 완료되었습니다."}
+        
+    except Exception as e:
+        db.rollback()
+        print(f"회원탈퇴 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="회원탈퇴 중 오류가 발생했습니다."
+        )
 
-# 수익 조회 API
 @app.get("/api/profit")
-def get_profit(
-    user: User | None = Depends(get_current_user)
-):
-    """사용자 수익 정보 조회"""
+async def get_profit(user: User | None = Depends(get_current_user)):
+    """수익 정보 조회 API (관리자 전용)"""
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -224,81 +200,293 @@ def get_profit(
             detail="관리자만 수익 정보를 조회할 수 있습니다."
         )
 
-    # 환경변수에서 API 클라이언트 가져오기
-    korea_api = get_korea_investment_client()
+    # 모의투자와 실투자 데이터를 모두 가져오기
+    result = {
+        "paper": None,  # 모의투자
+        "real": None,   # 실투자
+        "timestamp": datetime.now().isoformat()
+    }
     
-    if not korea_api:
+    # 모의투자 데이터 조회
+    try:
+        print("📊 모의투자 데이터 조회 시작...")
+        paper_api = get_paper_trading_client()
+        if paper_api:
+            paper_result = paper_api.get_account_summary()
+            if paper_result["success"]:
+                result["paper"] = paper_result["data"]
+                print("✅ 모의투자 데이터 조회 성공")
+            else:
+                print(f"❌ 모의투자 데이터 조회 실패: {paper_result['error']}")
+        else:
+            print("❌ 모의투자 API 클라이언트 생성 실패")
+    except Exception as e:
+        print(f"❌ 모의투자 데이터 조회 중 오류: {e}")
+        traceback.print_exc()
+    
+    # 실투자 데이터 조회
+    try:
+        print("📊 실투자 데이터 조회 시작...")
+        real_api = get_real_trading_client()
+        if real_api:
+            real_result = real_api.get_account_summary()
+            if real_result["success"]:
+                result["real"] = real_result["data"]
+                print("✅ 실투자 데이터 조회 성공")
+            else:
+                print(f"❌ 실투자 데이터 조회 실패: {real_result['error']}")
+        else:
+            print("❌ 실투자 API 클라이언트 생성 실패")
+    except Exception as e:
+        print(f"❌ 실투자 데이터 조회 중 오류: {e}")
+        traceback.print_exc()
+    
+    return result
+
+@app.get("/api/current-price/{symbol}")
+async def get_current_price(symbol: str, user: User | None = Depends(get_current_user)):
+    """현재가 조회 API"""
+    if not user:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="한국투자증권 API가 설정되지 않았습니다. 서버 설정을 확인하세요."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="로그인이 필요합니다."
         )
     
     try:
-        # 잔고 조회
-        balance_data = korea_api.get_balance()
-        if not balance_data:
+        # 기본적으로 모의투자 API 사용
+        api = get_paper_trading_client()
+        if not api:
+            api = get_real_trading_client()
+        
+        if not api:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="잔고 조회에 실패했습니다."
+                detail="API 클라이언트를 생성할 수 없습니다."
             )
         
-        # 보유 종목 조회
-        holdings = korea_api.get_holdings()
+        result = api.get_current_price(symbol)
         
-        # 수익 계산을 위한 데이터 준비
-        profit_data = {
-            "total_balance": 0,
-            "total_profit": 0,
-            "total_purchase_amount": 0,
-            "holdings": [],
-            "account_info": {
-                "acc_no": korea_api.acc_no,
-                "mock": korea_api.mock
+        if result.get('rt_cd') == '0':
+            return {
+                "success": True,
+                "data": result['output'],
+                "trading_mode": api.trading_mode
             }
-        }
-        
-        # 잔고 정보 추출
-        if balance_data.get('output2'):
-            balance_info = balance_data['output2'][0]
-            profit_data["total_balance"] = int(balance_info.get('tot_evlu_amt', 0))
-            profit_data["total_purchase_amount"] = int(balance_info.get('pchs_amt_smtl_amt', 0))
-            profit_data["total_profit"] = int(balance_info.get('evlu_pfls_smtl_amt', 0))
-
-        # 보유 종목 정보 처리
-        for holding in holdings:
-            symbol = holding.get('pdno', '')
-            if symbol:
-                purchase_price = int(holding.get('pchs_avg_pric', 0))
-                quantity = int(holding.get('hldg_qty', 0))
-                current_price = int(holding.get('prpr', 0))
-                profit = int(holding.get('evlu_pfls_amt', 0))
-                
-                if purchase_price > 0:
-                    profit_rate = ((current_price - purchase_price) / purchase_price) * 100
-                else:
-                    profit_rate = 0
-                
-                profit_data["holdings"].append({
-                    "symbol": symbol,
-                    "name": holding.get('prdt_name', ''),
-                    "quantity": quantity,
-                    "purchase_price": purchase_price,
-                    "current_price": current_price,
-                    "profit": profit,
-                    "profit_rate": round(profit_rate, 2),
-                    "total_value": int(holding.get('evlu_amt', 0))
-                })
-        
-        return profit_data
-        
+        else:
+            return {
+                "success": False,
+                "error": result.get('msg1', '현재가 조회 실패'),
+                "trading_mode": api.trading_mode
+            }
+            
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        print(f"현재가 조회 오류: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"수익 조회 중 오류가 발생했습니다: {str(e)}"
+            detail="현재가 조회 중 오류가 발생했습니다."
         )
 
+@app.post("/api/order/buy")
+async def place_buy_order(
+    symbol: str,
+    quantity: int,
+    price: Optional[int] = None,
+    order_type: str = "지정가",
+    user: User | None = Depends(get_current_user)
+):
+    """매수 주문 API (관리자 전용)"""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="로그인이 필요합니다."
+        )
+    
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자만 주문을 실행할 수 있습니다."
+        )
+    
+    try:
+        # 현재 TRADING_MODE에 따라 API 선택
+        trading_mode = os.getenv("TRADING_MODE", "paper")
+        api = get_korea_investment_client(trading_mode)
+        
+        if not api:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="API 클라이언트를 생성할 수 없습니다."
+            )
+        
+        result = api.place_buy_order(symbol, quantity, price, order_type)
+        
+        if result.get('rt_cd') == '0':
+            return {
+                "success": True,
+                "message": f"{symbol} 매수 주문이 성공했습니다.",
+                "order_info": result['output'],
+                "trading_mode": api.trading_mode
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get('msg1', '매수 주문 실패'),
+                "trading_mode": api.trading_mode
+            }
+            
+    except Exception as e:
+        print(f"매수 주문 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="매수 주문 중 오류가 발생했습니다."
+        )
+
+@app.post("/api/order/sell")
+async def place_sell_order(
+    symbol: str,
+    quantity: int,
+    price: Optional[int] = None,
+    order_type: str = "지정가",
+    user: User | None = Depends(get_current_user)
+):
+    """매도 주문 API (관리자 전용)"""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="로그인이 필요합니다."
+        )
+    
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자만 주문을 실행할 수 있습니다."
+        )
+    
+    try:
+        # 현재 TRADING_MODE에 따라 API 선택
+        trading_mode = os.getenv("TRADING_MODE", "paper")
+        api = get_korea_investment_client(trading_mode)
+        
+        if not api:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="API 클라이언트를 생성할 수 없습니다."
+            )
+        
+        result = api.place_sell_order(symbol, quantity, price, order_type)
+        
+        if result.get('rt_cd') == '0':
+            return {
+                "success": True,
+                "message": f"{symbol} 매도 주문이 성공했습니다.",
+                "order_info": result['output'],
+                "trading_mode": api.trading_mode
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get('msg1', '매도 주문 실패'),
+                "trading_mode": api.trading_mode
+            }
+            
+    except Exception as e:
+        print(f"매도 주문 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="매도 주문 중 오류가 발생했습니다."
+        )
+
+@app.get("/api/orders")
+async def get_orders(user: User | None = Depends(get_current_user)):
+    """주문/체결 조회 API (관리자 전용)"""
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="로그인이 필요합니다."
+        )
+    
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자만 주문 정보를 조회할 수 있습니다."
+        )
+    
+    try:
+        # 현재 TRADING_MODE에 따라 API 선택
+        trading_mode = os.getenv("TRADING_MODE", "paper")
+        api = get_korea_investment_client(trading_mode)
+        
+        if not api:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="API 클라이언트를 생성할 수 없습니다."
+            )
+        
+        result = api.get_order_status()
+        
+        if result.get('rt_cd') == '0':
+            return {
+                "success": True,
+                "data": result,
+                "trading_mode": api.trading_mode
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.get('msg1', '주문 조회 실패'),
+                "trading_mode": api.trading_mode
+            }
+            
+    except Exception as e:
+        print(f"주문 조회 오류: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="주문 조회 중 오류가 발생했습니다."
+        )
+
+# 서버 시작 시 관리자 계정 자동 생성
+@app.on_event("startup")
+async def startup_event():
+    """서버 시작 시 실행되는 이벤트"""
+    print("🚀 Stockling API v2 서버 시작...")
+    
+    # 관리자 계정 자동 생성
+    try:
+        from .database import SessionLocal
+        from .auth import get_password_hash
+        
+        db = SessionLocal()
+        
+        admin_email = os.getenv("ADMIN_EMAIL")
+        admin_password = os.getenv("ADMIN_PASSWORD")
+        
+        if admin_email and admin_password:
+            # 기존 관리자 계정 확인
+            existing_admin = db.query(User).filter(User.email == admin_email).first()
+            
+            if not existing_admin:
+                # 새 관리자 계정 생성
+                hashed_password = get_password_hash(admin_password)
+                admin_user = User(
+                    email=admin_email,
+                    password=hashed_password,
+                    is_admin=True
+                )
+                
+                db.add(admin_user)
+                db.commit()
+                print(f"✅ 관리자 계정 생성 완료: {admin_email}")
+            else:
+                print(f"ℹ️ 기존 관리자 계정 확인: {admin_email}")
+        
+        db.close()
+        
+    except Exception as e:
+        print(f"❌ 관리자 계정 생성 중 오류: {e}")
+    
+    print("✅ 서버 시작 완료")
+
 if __name__ == "__main__":
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8000, reload=True) 
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
 
