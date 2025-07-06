@@ -32,9 +32,9 @@ templates = Jinja2Templates(directory="templates")
 security = HTTPBearer(auto_error=False)
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
+async def read_root(request: Request, user: User | None = Depends(get_current_user)):
     """메인 페이지"""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
