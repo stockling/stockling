@@ -30,16 +30,16 @@ class KoreaInvestmentAPI:
             trading_mode: "paper" (모의투자) 또는 "real" (실투자)
         """
         self.trading_mode = trading_mode.upper()
-        self.base_url = "https://openapi.koreainvestment.com:9443"
-        
-        # 환경변수에서 설정 가져오기
+        # 모의투자/실투자 도메인 분기
         if self.trading_mode == "PAPER":
+            self.base_url = "https://openapivts.koreainvestment.com:29443"
             self.api_key = os.getenv("KIS_APP_KEY_PAPER")
             self.api_secret = os.getenv("KIS_APP_SECRET_PAPER")
             self.account_no = os.getenv("KIS_ACCOUNT_NO_PAPER")
             self.account_code = os.getenv("KIS_ACCOUNT_CODE_PAPER")
             self.is_mock = True
         elif self.trading_mode == "REAL":
+            self.base_url = "https://openapi.koreainvestment.com:9443"
             self.api_key = os.getenv("KIS_APP_KEY_REAL")
             self.api_secret = os.getenv("KIS_APP_SECRET_REAL")
             self.account_no = os.getenv("KIS_ACCOUNT_NO_REAL")
@@ -158,8 +158,13 @@ class KoreaInvestmentAPI:
         print("📊 계좌 잔고 조회 중...")
         
         endpoint = "/uapi/domestic-stock/v1/trading/inquire-balance"
+        # 모의투자/실투자 tr_id 분기
+        if self.is_mock:
+            tr_id = "VTTC8434R"  # 모의투자 tr_id
+        else:
+            tr_id = "TTTC8434R"  # 실투자 tr_id
         headers = {
-            "tr_id": "TTTC8434R",  # 실전/모의투자 잔고 조회
+            "tr_id": tr_id,  # 실전/모의투자 잔고 조회
             "custtype": "P"  # 개인
         }
         params = {

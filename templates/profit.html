@@ -52,20 +52,23 @@
     <!-- 수익확인 섹션 -->
     <section class="py-16 flex-grow">
         <div class="max-w-5xl mx-auto px-4">
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex justify-between items-center mb-4">
                 <div class="flex items-center space-x-4">
                     <h1 class="text-3xl font-bold mr-2">
                         수익확인
                     </h1>
                     <div id="profitTabs" class="flex space-x-2">
                         <button id="tabPaper" class="tab-btn px-4 py-2 rounded-full text-gray-700 bg-white hover:bg-blue-50 font-semibold shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all duration-200 active">모의투자</button>
-                        <button id="tabReal" class="tab-btn px-4 py-2 rounded-full text-gray-700 bg-white hover:bg-blue-50 font-semibold shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all duration-200">실투자</button>
+                        <button id="tabReal" class="tab-btn px-4 py-2 rounded-full text-gray-700 bg-white hover:bg-blue-50 font-semibold shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all duration-200">실제투자</button>
                     </div>
                 </div>
-                <button id="refreshBtn" class="bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm flex items-center space-x-2">
-                    <i class="fas fa-sync-alt"></i>
-                    <span>새로고침</span>
-                </button>
+                <div class="flex flex-col items-end">
+                    <button id="refreshBtn" class="bg-blue-600 text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-blue-700 transition-all duration-200 shadow-sm flex items-center space-x-2">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>새로고침</span>
+                    </button>
+                    <span id="lastUpdate" class="text-xs text-gray-500 mt-2"></span>
+                </div>
             </div>
             
             <!-- 계좌 요약 정보 -->
@@ -283,6 +286,18 @@
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 let tabData = data[currentTab];
+                // 최종 업데이트 일시 표시
+                const lastUpdateEl = document.getElementById('lastUpdate');
+                if (lastUpdateEl && data.timestamp) {
+                    // ISO 포맷을 YYYY.MM.DD HH:mm 형식으로 변환
+                    const d = new Date(data.timestamp);
+                    const y = d.getFullYear();
+                    const m = (d.getMonth()+1).toString().padStart(2,'0');
+                    const day = d.getDate().toString().padStart(2,'0');
+                    const h = d.getHours().toString().padStart(2,'0');
+                    const min = d.getMinutes().toString().padStart(2,'0');
+                    lastUpdateEl.innerHTML = `<span class='text-orange-500 font-bold'>V</span>최종 업데이트 일시 : ${y}.${m}.${day} ${h}:${min}`;
+                }
                 if (!tabData) {
                     displayAccountSummary(null);
                     displayStockList(null);
