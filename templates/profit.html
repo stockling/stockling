@@ -74,7 +74,12 @@
             <!-- 계좌 요약 정보 -->
             <div id="accountSummary" class="bg-white rounded-lg shadow-md p-6 mb-6 hidden">
                 <h2 class="text-xl font-bold mb-4 text-gray-800">계좌 요약</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <div class="text-sm text-gray-600 mb-1">계좌정보</div>
+                        <div id="accountNumber" class="text-xl font-bold text-yellow-600">정보를 가져오는 중...</div>
+                        <div id="accountMode" class="text-xs text-gray-500 mt-1"></div>
+                    </div>
                     <div class="bg-blue-50 p-4 rounded-lg">
                         <div class="text-sm text-gray-600 mb-1">총 평가금액</div>
                         <div id="totalValue" class="text-xl font-bold text-blue-600"></div>
@@ -314,11 +319,15 @@
 
         // 계좌 요약 정보 표시 (tabData 구조에 맞게)
         function displayAccountSummary(summary) {
+            const accountNumberEl = document.getElementById('accountNumber');
+            const accountModeEl = document.getElementById('accountMode');
             const totalValueEl = document.getElementById('totalValue');
             const totalProfitEl = document.getElementById('totalProfit');
             const profitRateEl = document.getElementById('profitRate');
 
             if (!summary) {
+                if (accountNumberEl) accountNumberEl.textContent = '정보를 가져올 수 없습니다.';
+                if (accountModeEl) accountModeEl.textContent = '';
                 if (totalValueEl) totalValueEl.textContent = '정보를 가져올 수 없습니다.';
                 if (totalProfitEl) {
                     totalProfitEl.textContent = '';
@@ -329,6 +338,18 @@
                     profitRateEl.className = 'text-xl font-bold text-gray-400';
                 }
                 return;
+            }
+
+            // 계좌번호 표시
+            if (accountNumberEl && summary.account_info) {
+                accountNumberEl.textContent = summary.account_info.account_no;
+            }
+            
+            // 투자모드 표시
+            if (accountModeEl && summary.account_info) {
+                const modeText = summary.account_info.is_mock ? '모의투자' : '실투자';
+                const modeColor = summary.account_info.is_mock ? 'text-orange-600' : 'text-red-600';
+                accountModeEl.innerHTML = `<span class="${modeColor} font-semibold">${modeText}</span>`;
             }
 
             if (totalValueEl) totalValueEl.textContent = formatNumber(summary.total_balance) + '원';
@@ -407,8 +428,11 @@
         if (retryBtn) {
             retryBtn.addEventListener('click', () => loadProfitData());
         }
+        
         // 페이지 로드 시 데이터 로드
-        // (탭 전환 시에도 loadProfitData가 호출됨)
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProfitData();
+        });
     </script>
 </body>
 </html> 
