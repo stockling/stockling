@@ -52,11 +52,11 @@ async def profit_page(request: Request, user: User | None = Depends(get_current_
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     
-    if not user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="관리자만 접근할 수 있습니다."
-        )
+    # if not user.is_admin:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_403_FORBIDDEN,
+    #         detail="관리자만 접근할 수 있습니다."
+    #     )
     
     return templates.TemplateResponse("profit.html", {
         "request": request, 
